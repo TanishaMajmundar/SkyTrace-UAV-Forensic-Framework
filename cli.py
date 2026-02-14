@@ -202,25 +202,28 @@ def show_final_summary(timeline,termination,battery,lats,lons,alt_motion):
 
 
 def main():
-    
-    print("Analyze CSV file")
-    print("1. For csv file analysis")
-    print("2. Exit")
 
-    choice = input("Enter your choice: ").strip()
+    while True:
+        print("\nAnalyze CSV file")
+        print("1. For csv file analysis")
+        print("2. Exit")
 
-    if choice == "1":
-        csv_path = input("Enter path to CSV file: ").strip().strip('"')
-        if not os.path.exists(csv_path):
-            print("❌ CSV file not found")
+        choice = input("Enter your choice: ").strip()
+
+        if choice == "1":
+            csv_path = input("Enter path to CSV file: ").strip().strip('"')
+            if not os.path.exists(csv_path):
+                print("❌ CSV file not found")
+                continue   # Go back to menu
+            break          # Valid input → exit loop and continue program
+
+        elif choice == "2":
+            print("Exiting Tool")
             return
-    elif choice == "2":
-        print("Exiting Tool")
-        return
-   
-    else:
-        print("Invalid choice")
-        return
+
+        else:
+            print("❌ Invalid choice. Please try again.")
+
 
     rows = load_csv(csv_path)
     time_col = find_time_column(rows)
