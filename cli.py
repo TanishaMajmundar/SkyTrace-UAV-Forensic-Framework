@@ -228,7 +228,11 @@ def main():
     rows = load_csv(csv_path)
     time_col = find_time_column(rows)
     gps_lat_col = "GPS:Lat"   
-    termination = classify_termination(rows, time_col)
+    termination = classify_termination(
+        rows,
+        time_col,
+        "IMU_ATTI(0):relativeHeight:C"
+    )
     battery = battery_anomaly_analysis(
         rows,
         time_col,

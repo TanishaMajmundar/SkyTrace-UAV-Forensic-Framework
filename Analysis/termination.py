@@ -36,8 +36,7 @@ def get_recent_altitudes(rows, time_col, alt_col, window_seconds=10):
 
     return [alt for t, alt in data if end_time - t <= window_seconds]
 
-def classify_termination(rows, time_col):
-    alt_col = find_altitude_column(rows)
+def classify_termination(rows, time_col, alt_col):
 
     if not alt_col:
         return {
