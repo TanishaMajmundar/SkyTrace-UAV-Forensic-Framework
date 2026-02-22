@@ -6,7 +6,6 @@ from Analysis import timeline
 from Analysis import battery
 from Analysis.timeline import (
     load_csv,
-    find_time_column,
     build_timeline,
     detect_abrupt_end,
     seconds_to_hhmmss,
@@ -226,7 +225,7 @@ def main():
 
 
     rows = load_csv(csv_path)
-    time_col = find_time_column(rows)
+    time_col = "GPS:Time"
     gps_lat_col = "GPS:Lat"   
     termination = classify_termination(
         rows,
