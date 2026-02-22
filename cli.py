@@ -229,7 +229,14 @@ def main():
     time_col = find_time_column(rows)
     gps_lat_col = "GPS:Lat"   
     termination = classify_termination(rows, time_col)
-    battery = battery_anomaly_analysis(rows, time_col)
+    battery = battery_anomaly_analysis(
+        rows,
+        time_col,
+        "BatteryInfo:cap_per:D",
+        "BatteryInfo:vol_t:D",
+        "SMART_BATT:goHome%",
+        "SMART_BATT:land%"
+    )
     lats, lons = extract_gps_points(rows)
     if not time_col:
         print("No time column found")
@@ -263,7 +270,11 @@ def main():
 
         elif choice == "3":
             show_battery(battery)
-            plot_battery_step_terminal(rows, time_col)
+            plot_battery_step_terminal(
+                rows,
+                time_col,
+                "BatteryInfo:cap_per:D"
+            )
 
         elif choice == "4":
             show_gps(lats, lons)

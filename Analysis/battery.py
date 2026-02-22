@@ -109,19 +109,21 @@ def detect_battery_anomaly(data):
     }
 
 
-def battery_anomaly_analysis(rows, time_col):
-    CAP_COL = "BatteryInfo:cap_per:D"
-    VOLT_COL = "BatteryInfo:vol_t:D"
-    GOHOME_COL = "SMART_BATT:goHome%"
-    LAND_COL = "SMART_BATT:land%"
+def battery_anomaly_analysis(rows, time_col, cap_col, volt_col, gohome_col, land_col):
+
+    if not cap_col or not volt_col:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "Battery columns not mapped"
+        }
 
     data = extract_battery_series(
         rows,
         time_col,
-        CAP_COL,
-        VOLT_COL,
-        GOHOME_COL,
-        LAND_COL
+        cap_col,
+        volt_col,
+        gohome_col,
+        land_col
     )
 
     if not data:
@@ -158,13 +160,13 @@ import plotext as plt
 from collections import defaultdict
 from Analysis.timeline import hhmmss_to_seconds
 
-def plot_battery_step_terminal(rows, time_col):
+def plot_battery_step_terminal(rows, time_col, cap_col):
     minute_bucket = defaultdict(list)
 
     for r in rows:
         try:
             t_sec = hhmmss_to_seconds(r[time_col])
-            cap = float(r["BatteryInfo:cap_per:D"])
+            cap = float(r[cap_col])
         except:
             continue
 
