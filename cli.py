@@ -237,7 +237,11 @@ def main():
         "SMART_BATT:goHome%",
         "SMART_BATT:land%"
     )
-    lats, lons = extract_gps_points(rows)
+    lats, lons = extract_gps_points(
+        rows,
+        "GPS:Lat",
+        "GPS:Long"
+    )
     if not time_col:
         print("No time column found")
         return

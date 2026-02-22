@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 
-def extract_gps_points(rows):
-    lat_col = "GPS:Lat"
-    lon_col = "GPS:Long"
+def extract_gps_points(rows, lat_col, lon_col):
+
+    if not lat_col or not lon_col:
+        return [], []
 
     lats = []
     lons = []
