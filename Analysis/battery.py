@@ -162,11 +162,12 @@ from Analysis.timeline import hhmmss_to_seconds
 
 def plot_battery_step_terminal(rows, time_col, cap_col):
     minute_bucket = defaultdict(list)
-
+    raw_caps = []
     for r in rows:
         try:
             t_sec = hhmmss_to_seconds(r[time_col])
             cap = float(r[cap_col])
+            raw_caps.append(cap)
         except:
             continue
 
@@ -220,14 +221,18 @@ def plot_battery_step_terminal(rows, time_col, cap_col):
 
     # ── DETAILS BELOW GRAPH ─────────────────
     print("\n🔍 Battery Step Summary")
-    print(f"Start Battery : {round(battery_per_min[0], 2)} %")
-    print(f"End Battery   : {round(battery_per_min[-1], 2)} %")
+
+    start_cap = raw_caps[0]
+    end_cap = raw_caps[-1]
+
+    print(f"Start Battery : {round(start_cap, 2)} %")
+    print(f"End Battery   : {round(end_cap, 2)} %")
     print(f"Total Minutes : {len(battery_per_min)}")
 
-    drop = battery_per_min[0] - battery_per_min[-1]
+    drop = start_cap - end_cap
     print(f"Total Drop    : {round(drop, 2)} %")
 
-    if battery_per_min[-1] <= 20:
+    if end_cap <= 20:
         print("⚠️  Battery reached critical level")
     else:
         print("✅ Battery stayed above critical level")

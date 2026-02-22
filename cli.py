@@ -77,16 +77,24 @@ def show_termination(termination):
 
 
 def show_battery(battery):
+
     print("\n🔋 Battery Analysis")
     print("Battery status:", battery["status"])
     print("Reason:", battery["reason"])
+
+    # If battery unavailable, stop here
+    if battery["status"] in ["UNAVAILABLE", "UNKNOWN"]:
+        return
+
     print("Battery at start:", battery["start_cap"], "%")
     print("Battery at end:", battery["end_cap"], "%")
     print("Voltage at start:", round(battery["start_volt"], 2), "V")
     print("Voltage at end:", round(battery["end_volt"], 2), "V")
+
     print("\nSMART Battery Thresholds")
     print("Go-Home threshold:", battery["go_home_threshold"], "%")
     print("Land threshold:", battery["land_threshold"], "%")
+
     print("\nSMART Battery Usage")
     print("Go-Home condition used:", "YES" if battery["go_home_used"] else "NO")
     print("Land condition used:", "YES" if battery["land_used"] else "NO")
@@ -115,24 +123,27 @@ def show_timeline(timeline, rows, time_col, gps_lat_col):
 
 
 def show_altitude_motion(alt_motion):
+
     print("\n🏔️ Altitude & Motion Analysis")
+
+    # If altitude not available
+    if "max_altitude" not in alt_motion:
+        print("Status:", alt_motion.get("status", "UNKNOWN"))
+        print("Reason:", alt_motion.get("reason", "Altitude data unavailable"))
+        return
+
     print("Maximum altitude:", alt_motion["max_altitude"], "m")
     print("End altitude:", alt_motion["end_altitude"], "m")
-    if alt_motion["end_altitude"] < 0:
-        print(
-            "Note: Negative end altitude indicates landing below takeoff reference "
-            "(relative height), not a crash."
-        )
+
     print("Rapid descent detected:", alt_motion["rapid_descent"])
     print("Descent rate near end:", alt_motion["descent_rate"], "m/s")
-    if alt_motion["descent_rate"] < 0:
-        print(
-            "Note: Negative descent rate indicates downward motion. "
-        )
+
     if alt_motion["end_altitude"] <= 1.0 and not alt_motion["rapid_descent"]:
         print("Conclusion: Controlled landing detected")
     elif alt_motion["rapid_descent"]:
         print("Conclusion: Abnormal descent detected (possible crash)")
+    else:
+        print("Conclusion: Inconclusive")
 
 
 def show_gps(lats, lons):
@@ -164,10 +175,14 @@ def show_final_summary(timeline,termination,battery,lats,lons,alt_motion):
     print(f"Termination reason     : {termination['reason']}")
     # Battery
     print(f"Battery status         : {battery['status']}")
-    print(f"Battery end percentage : {battery['end_cap']} %")
-    # SMART battery
-    print(f"Go-Home used           : {'YES' if battery['go_home_used'] else 'NO'}")
-    print(f"Forced landing used    : {'YES' if battery['land_used'] else 'NO'}")
+    if battery["status"] not in ["UNAVAILABLE", "UNKNOWN"]:
+        print(f"Battery end percentage : {battery['end_cap']} %")
+        print(f"Go-Home used           : {'YES' if battery['go_home_used'] else 'NO'}")
+        print(f"Forced landing used    : {'YES' if battery['land_used'] else 'NO'}")
+    else:
+        print("Battery end percentage : Not available")
+        print("Go-Home used           : Not available")
+        print("Forced landing used    : Not available")
     # GPS
     if lats and lons:
         print("Last known GPS location:")
@@ -177,18 +192,20 @@ def show_final_summary(timeline,termination,battery,lats,lons,alt_motion):
         print("Last known GPS location: Not available")
     # Altitude summary
     print("\nAltitude Summary:")
-    print(f"Maximum altitude       : {round(alt_motion['max_altitude'], 2)} m")
-    print(f"End altitude           : {round(alt_motion['end_altitude'], 2)} m")
-    if alt_motion["end_altitude"] < 0:
-        print(
-            "Note: Negative end altitude indicates landing below takeoff reference "
-        )
-    if alt_motion["end_altitude"] <= 1.0 and not alt_motion["rapid_descent"]:
-        print("Altitude interpretation: Controlled descent to ground level")
-    elif alt_motion["rapid_descent"]:
-        print("Altitude interpretation: Abnormal rapid descent detected")
+
+    if "max_altitude" in alt_motion:
+        print(f"Maximum altitude       : {round(alt_motion['max_altitude'], 2)} m")
+        print(f"End altitude           : {round(alt_motion['end_altitude'], 2)} m")
+
+        if alt_motion["end_altitude"] <= 2.0 and not alt_motion["rapid_descent"]:
+            print("Altitude interpretation: Controlled descent to ground level")
+        elif alt_motion["rapid_descent"]:
+            print("Altitude interpretation: Abnormal rapid descent detected")
+        else:
+            print("Altitude interpretation: Inconclusive")
     else:
-        print("Altitude interpretation: Inconclusive")
+        print("Status                  :", alt_motion.get("status", "UNKNOWN"))
+        print("Reason                  :", alt_motion.get("reason", "Altitude data unavailable"))
 
     # Final conclusion
     print("\n🔎 Final Conclusion:")
@@ -198,6 +215,63 @@ def show_final_summary(timeline,termination,battery,lats,lons,alt_motion):
         print("The flight shows signs consistent with an abnormal termination or possible crash.")
     else:
         print("The flight termination could not be conclusively classified.")
+
+
+def auto_detect_columns(headers):
+
+    column_map = {
+        "time": None,
+        "altitude": None,
+        "battery": None,
+        "voltage": None,
+        "lat": None,
+        "lon": None,
+        "gohome": None,
+        "land": None
+    }
+
+    # ---- Preferred DJI Columns ----
+    preferred = {
+        "time": "GPS:Time",
+        "altitude": "IMU_ATTI(0):relativeHeight:C",
+        "battery": "BatteryInfo:cap_per:D",
+        "voltage": "BatteryInfo:vol_t:D",
+        "lat": "GPS:Lat",
+        "lon": "GPS:Long",
+        "gohome": "SMART_BATT:goHome%",
+        "land": "SMART_BATT:land%"
+    }
+
+    # 1️⃣ First: try preferred exact matches
+    for key, col_name in preferred.items():
+        if col_name in headers:
+            column_map[key] = col_name
+
+    # 2️⃣ Fallback: keyword-based detection
+    for h in headers:
+        h_lower = h.lower()
+
+        if not column_map["time"] and "time" in h_lower:
+            column_map["time"] = h
+
+        if not column_map["altitude"] and "alt" in h_lower:
+            column_map["altitude"] = h
+
+        if not column_map["battery"] and "cap" in h_lower:
+            column_map["battery"] = h
+
+        if not column_map["voltage"] and "vol" in h_lower:
+            column_map["voltage"] = h
+
+        if not column_map["lat"]:
+            if h_lower.endswith("lat") or "gps:lat" in h_lower or "latitude" in h_lower:
+                column_map["lat"] = h
+
+        if not column_map["lon"]:
+            if h_lower.endswith("lon") or "gps:long" in h_lower or "longitude" in h_lower:
+                column_map["lon"] = h
+
+    return column_map
 
 
 def main():
@@ -225,34 +299,46 @@ def main():
 
 
     rows = load_csv(csv_path)
-    time_col = "GPS:Time"
-    gps_lat_col = "GPS:Lat"   
+    headers = list(rows[0].keys()) if rows else []
+    column_map = auto_detect_columns(headers)
+
+    print("\n📂 Detected Column Configuration:\n")
+    for key, value in column_map.items():
+        print(f"{key.capitalize():<10} → {value if value else 'Not detected'}")
+
+    time_col = column_map["time"]
+
+    if not time_col:
+        print("❌ No time column detected. Cannot continue.")
+        return
+
     termination = classify_termination(
         rows,
         time_col,
-        "IMU_ATTI(0):relativeHeight:C"
+        column_map["altitude"]
     )
+
     battery = battery_anomaly_analysis(
         rows,
         time_col,
-        "BatteryInfo:cap_per:D",
-        "BatteryInfo:vol_t:D",
-        "SMART_BATT:goHome%",
-        "SMART_BATT:land%"
+        column_map["battery"],
+        column_map["voltage"],
+        column_map["gohome"],
+        column_map["land"]
     )
+
     lats, lons = extract_gps_points(
         rows,
-        "GPS:Lat",
-        "GPS:Long"
+        column_map["lat"],
+        column_map["lon"]
     )
-    if not time_col:
-        print("No time column found")
-        return
+
     timeline = build_timeline(rows, time_col)
+
     alt_motion = altitude_motion_analysis(
         rows,
         time_col,
-        "IMU_ATTI(0):relativeHeight:C"
+        column_map["altitude"]
     )
     
     while True:
@@ -270,18 +356,19 @@ def main():
         choice = input("Enter your choice: ").strip()
 
         if choice == "1":
-            show_timeline(timeline, rows, time_col, gps_lat_col)
+            show_timeline(timeline, rows, time_col, column_map["lat"])
                     
         elif choice == "2":
             show_termination(termination)
 
         elif choice == "3":
             show_battery(battery)
-            plot_battery_step_terminal(
-                rows,
-                time_col,
-                "BatteryInfo:cap_per:D"
-            )
+            if battery["status"] not in ["UNAVAILABLE", "UNKNOWN"]:
+                plot_battery_step_terminal(
+                    rows,
+                    time_col,
+                    column_map["battery"]
+                )
 
         elif choice == "4":
             show_gps(lats, lons)
@@ -291,11 +378,13 @@ def main():
 
         elif choice == "6":
             show_altitude_motion(alt_motion)
-            plot_altitude_profile_terminal(
-                rows,
-                time_col,
-                "IMU_ATTI(0):relativeHeight:C"
-            )
+
+            if "max_altitude" in alt_motion:
+                plot_altitude_profile_terminal(
+                    rows,
+                    time_col,
+                    column_map["altitude"]
+                )
             
         elif choice == "7":
             show_final_summary(
