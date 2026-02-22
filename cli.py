@@ -235,7 +235,11 @@ def main():
         print("No time column found")
         return
     timeline = build_timeline(rows, time_col)
-    alt_motion = altitude_motion_analysis(rows, time_col)
+    alt_motion = altitude_motion_analysis(
+        rows,
+        time_col,
+        "IMU_ATTI(0):relativeHeight:C"
+    )
     
     while True:
         print("\n" + "-" * 40)

@@ -44,10 +44,15 @@ def detect_rapid_descent(data, window=5):
 
     return rate > RAPID_DESCENT_RATE, rate
 
-def altitude_motion_analysis(rows, time_col):
-    ALT_COL = "IMU_ATTI(0):relativeHeight:C"
+def altitude_motion_analysis(rows, time_col, alt_col):
 
-    data = extract_altitude_series(rows, time_col, ALT_COL)
+    if not alt_col:
+        return {
+            "status": "UNAVAILABLE",
+            "reason": "Altitude column not mapped"
+        }
+
+    data = extract_altitude_series(rows, time_col, alt_col)
 
     if not data:
         return {
